@@ -1,0 +1,27 @@
+{:paths ["src" "test" "resources"]
+ :deps {com.etzhayyim/shomei
+        {:git/url "https://github.com/etzhayyim/com-etzhayyim-shomei.git"
+         :git/sha "e9ed6035da56f9a53e2487c35f4b87b22a82877b"}}
+ :tasks
+ {test
+  {:doc "Run the standalone credits contract suite."
+   :task
+   (do
+     (require 'clojure.test
+              'credits.murakumo-test
+              'credits.methods.purchase-test
+              'credits.methods.spend-allocation-test
+              'credits.methods.anti-fraud-test
+              'credits.methods.ledger-rails-test
+              'credits.methods.identity-gate-test
+              'credits.methods.charter-gates-test)
+     (let [result (apply clojure.test/run-tests
+                         '[credits.murakumo-test
+                           credits.methods.purchase-test
+                           credits.methods.spend-allocation-test
+                           credits.methods.anti-fraud-test
+                           credits.methods.ledger-rails-test
+                           credits.methods.identity-gate-test
+                           credits.methods.charter-gates-test])]
+       (when-not (zero? (+ (:fail result) (:error result)))
+         (throw (ex-info "credits tests failed" result)))))}}}
