@@ -1,8 +1,25 @@
 # Migration TODO
 
-**Status**: 🔄 TRANSFORM — seed copied 2026-05-21, codemod pending.
+**Status**: 🔄 TRANSFORM — ENGI R0 social kernel landed 2026-07-23;
+central-ledger retirement and device integration pending.
 
-**Codemod required**: commerce — Stripe→USDC+TitheRouter, SBT carve-out
+**Target**: central credit/GCC → participant-owned ENGI journals. USDC and
+TitheRouter are optional boundary adapters, not the monetary source of truth.
+
+## ENGI integration gates
+
+- [x] Pure replayable mutual-credit state machine.
+- [x] Bilateral signatures required at the state-machine boundary.
+- [x] Relational credit limit from independently signed endorsements.
+- [x] Replay protection and zero-net-supply invariant.
+- [x] Bounded Commons issuance with heterogeneous role quorum.
+- [ ] Canonical event encoding + content hash test vectors.
+- [ ] Ed25519/WebAuthn verifier adapter on participant devices.
+- [ ] Append-only kotoba/AT journal owned by each participant.
+- [ ] Gossip/merge and deterministic checkpoint root.
+- [ ] Offline three-device pilot; no etzhayyim server in the transaction path.
+- [ ] Retire legacy graph.write earn/spend pipelines after export/reconciliation.
+- [ ] Make Kisha a Commons issuance policy; remove Phenotype from basic provision.
 
 ## Substrate-boundary checks
 
