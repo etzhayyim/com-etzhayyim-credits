@@ -15,7 +15,7 @@
   (:state
    (engi/establish-credit-line
     state
-    {:subject did
+    {:id (str "credit-line:" did) :type :credit-line :subject did
      :endorsements (mapv (fn [[guarantor limit]]
                            {:guarantor guarantor :limit limit :subject did})
                          limits)}
@@ -41,6 +41,8 @@
     (is (= -40 (engi/balance-of s2 "did:alice")))
     (is (= 40 (engi/balance-of s2 "did:bob")))
     (is (zero? (engi/mutual-credit-net s2)))
+    (is (= #{"did:alice" "did:bob"}
+           (set (map :signer (:signatures (last (:accepted-events s2)))))))
     (is (engi/valid-state? s2))))
 
 (deftest no-central-or-unilateral-issuance
@@ -72,7 +74,7 @@
          (:error
           (engi/establish-credit-line
            engi/zero-state
-           {:subject "did:alice"
+           {:id "credit-line:alice" :type :credit-line :subject "did:alice"
             :endorsements [{:guarantor "did:alice" :limit 999999
                             :subject "did:alice"}
                            {:guarantor "did:bob" :limit 100
@@ -100,6 +102,7 @@
         state (:state result)]
     (is (:ok? result))
     (is (= 30 (engi/balance-of state "did:carer")))
+    (is (= 4 (count (:attestations (last (:accepted-events state))))))
     (is (zero? (engi/mutual-credit-net state)))
     (is (engi/valid-state? state))
     (is (= :commons-epoch-cap-exceeded
@@ -116,3 +119,25 @@
              engi/zero-state
              (assoc event :attestations (subvec commons-attestations 0 3))
              attestation-ok?))))))
+
+(deftest journal-evidence-and-identifiers-are-replay-safe
+  (let [line-request
+        {:id "credit-line:alice" :type :credit-line :subject "did:alice"
+         :endorsements [{:guarantor "did:bob" :limit 50
+                         :subject "did:alice"}
+                        {:guarantor "did:carol" :limit 50
+                         :subject "did:alice"}]}
+        established (engi/establish-credit-line
+                     engi/zero-state line-request endorsement-ok?)
+        state (:state established)]
+    (is (:ok? established))
+    (is (= (:endorsements line-request)
+           (:endorsements (first (:accepted-events state)))))
+    (is (= :replayed-event-id
+           (:error (engi/establish-credit-line
+                    state line-request endorsement-ok?))))
+    (is (= :invalid-nonce
+           (:error (engi/apply-transfer
+                    state
+                    (transfer "tx-no-nonce" "did:alice" "did:bob" 1 nil)
+                    signature-ok?))))))

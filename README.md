@@ -11,6 +11,8 @@ Kisha rights.
 - No privileged mint key, treasury mint, admin balance edit, freeze, or blocklist.
 - A normal transfer creates an equal debit and credit; net supply stays zero.
 - Both parties sign the same event. `(DID, nonce)` can be consumed once.
+- Signed transfer, endorsement, and Commons quorum evidence remains in the
+  accepted journal so a new client can verify state without trusting a snapshot.
 - Negative balance is bounded by independent relational endorsements, not stake.
 - Commons issuance is distinct from trade and requires at least four distinct
   witnesses spanning local-community, independent-witness, and commons-guardian

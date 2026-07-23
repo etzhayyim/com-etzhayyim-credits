@@ -44,7 +44,7 @@
   "Establish a participant's negative-balance ceiling from independent
   endorsements. The median of positive endorsements is used; a participant
   cannot endorse themself and duplicate guarantors do not count."
-  [state {:keys [subject endorsements min-guarantors] :as request
+  [state {:keys [id subject endorsements min-guarantors] :as request
           :or {min-guarantors 2}}
    verify-endorsement?]
   (let [valid (->> endorsements
@@ -56,13 +56,27 @@
                    vals
                    sort
                    vec)]
-    (if (< (count valid) min-guarantors)
+    (cond
+      (not (string? id))
+      (rejection :invalid-event-id)
+
+      (contains? (:seen-event-ids state) id)
+      (rejection :replayed-event-id)
+
+      (< (count valid) min-guarantors)
       (rejection :insufficient-independent-guarantors)
+
+      :else
       (let [limit (nth valid (quot (count valid) 2))]
         {:ok? true
-         :state (assoc-in state [:credit-lines subject]
-                          {:limit limit
-                           :guarantor-count (count valid)})}))))
+         :state (-> state
+                    (assoc-in [:credit-lines subject]
+                              {:limit limit
+                               :guarantor-count (count valid)})
+                    (update :seen-event-ids conj id)
+                    ;; Preserve signed evidence so another client can replay
+                    ;; without trusting the client that produced this state.
+                    (update :accepted-events conj request))}))))
 
 (defn apply-transfer
   "Apply one two-party EN transfer. Amounts are integer micro-EN. Supply
@@ -77,6 +91,9 @@
 
     (not (positive-integer? amount))
     (rejection :invalid-amount)
+
+    (not (and (integer? nonce) (not (neg? nonce))))
+    (rejection :invalid-nonce)
 
     (contains? (:used-nonces state) [from nonce])
     (rejection :replayed-nonce)
@@ -98,7 +115,8 @@
                 (update-in [:balances to] (fnil + 0) amount)
                 (update :used-nonces conj [from nonce])
                 (update :seen-event-ids conj id)
-                (update :accepted-events conj (dissoc event :signatures)))}))
+                ;; Signatures are consensus evidence, not transport metadata.
+                (update :accepted-events conj event))}))
 
 (defn- heterogeneous-quorum?
   [attestations verify-attestation? event]
@@ -139,7 +157,8 @@
                   (update-in [:balances recipient] (fnil + 0) amount)
                   (update-in [:commons-issued-by-epoch epoch] (fnil + 0) amount)
                   (update :seen-event-ids conj id)
-                  (update :accepted-events conj (dissoc event :attestations)))})))
+                  ;; Retain the heterogeneous quorum for independent replay.
+                  (update :accepted-events conj event))})))
 
 (defn mutual-credit-net
   "Net balance excluding explicitly disclosed Commons issuance. Must remain 0."
